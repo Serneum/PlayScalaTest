@@ -7,9 +7,9 @@ GET         /                    controllers.Application.index
 
 GET         /workers             controllers.Application.workers
 
-GET         /fileList            controllers.Application.fileList
-POST        /upload              controllers.Application.upload()
-GET      /deleteFile/:name    controllers.Application.deleteFile(name: String)
+GET         /fileList            controllers.FileResource.fileList
+POST        /upload              controllers.FileResource.upload()
+GET         /deleteFile/:name    controllers.FileResource.deleteFile(name: String)
 
 # Map static resources from the /public folder to the /assets URL path
 GET         /assets/*file        controllers.Assets.at(path="/public", file)
