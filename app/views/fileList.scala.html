@@ -1,8 +1,11 @@
+@import controllers.files.FileResource
+@import controllers.files
+
 @import scratch.File
 @(files: List[File])(implicit flash: Flash)
 
 <span style="color:red"><b>@flash.get("error")</b></span>
-@helper.form(action = routes.FileResource.upload, 'enctype -> "multipart/form-data") {
+@helper.form(action = controllers.files.routes.FileResource.upload, 'enctype -> "multipart/form-data") {
   <input type="file" name="file">
   <p>
     <input type="submit">
@@ -21,7 +24,7 @@
     <tr>
       <td>@file.name</td>
       <td>@file.path</td>
-      <td><a href="@{routes.FileResource.deleteFile(file.name)}">delete</a></td>
+      <td><a href="@{controllers.files.routes.FileResource.deleteFile(file.name)}">delete</a></td>
     </tr>
   }
 
