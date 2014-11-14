@@ -1,0 +1,6 @@
+@import scratch.Worker
+@(workers: List[Worker])
+
+@for(worker <- workers) {
+  @(worker.name.first + " " + worker.name.last + " " + worker.age)<br/>
+}
