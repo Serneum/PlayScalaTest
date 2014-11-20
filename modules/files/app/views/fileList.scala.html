@@ -1,0 +1,32 @@
+@import controllers.files.FileResource
+@import controllers.files
+
+@import scratch.File
+@(files: List[File])(implicit flash: Flash)
+
+<span style="color:red"><b>@flash.get("error")</b></span>
+@helper.form(action = controllers.files.routes.FileResource.upload, 'enctype -> "multipart/form-data") {
+  <input type="file" name="file">
+  <p>
+    <input type="submit">
+  </p>
+}
+
+@if(!files.isEmpty) {
+  <table>
+    <tr>
+      <td>Name</td>
+      <td>Location</td>
+      <td></td>
+    </tr>
+
+  @for(file <- files) {
+    <tr>
+      <td>@file.name</td>
+      <td>@file.path</td>
+      <td><a href="@{controllers.files.routes.FileResource.deleteFile(file.name)}">delete</a></td>
+    </tr>
+  }
+
+  </table>
+}

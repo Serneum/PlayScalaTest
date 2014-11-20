@@ -1,0 +1,3 @@
+GET         /list                controllers.files.FileResource.list
+POST        /upload              controllers.files.FileResource.upload()
+GET         /deleteFile/:name    controllers.files.FileResource.deleteFile(name: String)
