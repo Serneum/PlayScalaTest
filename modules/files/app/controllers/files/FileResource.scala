@@ -50,6 +50,7 @@ object FileResource extends Controller {
           if (file.delete()) {
             Redirect(controllers.files.routes.FileResource.list)
           }
+          // Explicitly put the else statement because otherwise the statement will always run. Looks like Redirect() isn't like a return
           else {
             Redirect(controllers.files.routes.FileResource.list).flashing("error" -> s"Could not delete '$filePath'")
           }
@@ -72,6 +73,7 @@ object FileResource extends Controller {
     val filesDbUrl = SystemSettings.DB_URL + SystemSettings.FILES_DB + "_all_docs"
     val holder: WSRequestHolder = WS.url(filesDbUrl).withQueryString("include_docs" -> "true")
     return holder.get().map { response =>
+      // Do the work here so we can directly return a Future and not worry about how to guarantee that all data is present when rendering the view
       for (jsVal <- (response.json \ "rows").as[List[JsValue]]) {
         val doc: JsValue = (jsVal \ "doc")
         filesResult = filesResult ::: List(doc.as[FileRep])
@@ -99,6 +101,7 @@ object FileResource extends Controller {
     }
   }
 
+  // Can't seem to put this in the FileRep class file. Not sure why, but this isn't a terrible place either
   implicit val fileReads: Reads[FileRep] = (
     (JsPath \ "_id").read[UUID] and
     (JsPath \ "name").read[String] and
