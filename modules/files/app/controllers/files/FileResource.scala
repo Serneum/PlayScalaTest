@@ -4,9 +4,11 @@ import java.util.UUID
 
 import play.api._
 import play.api.Play.current
+import play.api.libs.Files.TemporaryFile
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import play.api.libs.ws._
+import play.api.mvc.MultipartFormData.FilePart
 import settings.SystemSettings
 import scala.concurrent.{Await, Future}
 import play.api.mvc._
@@ -19,20 +21,14 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object FileResource extends Controller {
 
-  val list = Action.async { implicit request =>
+  def list = Action.async { implicit request =>
     val futureFilesList = getAllFiles()
     futureFilesList.map(filesList => Ok(views.html.fileList(filesList)))
   }
 
-  val upload = Action(parse.multipartFormData) { request =>
+  def upload = Action(parse.multipartFormData) { request =>
     request.body.file("file").map { file =>
-      val fileName = file.filename
-      val id = UUID.randomUUID
-      val filePath = "files/" + id
-      val uploadedFile = new File(filePath)
-      uploadedFile.getParentFile().mkdirs()
-      file.ref.moveTo(uploadedFile)
-      insertIntoTable(id, fileName, filePath)
+      asyncCreateOrUpdateFile(file)
       Redirect(controllers.files.routes.FileResource.list)
     }
     .getOrElse {
@@ -63,6 +59,43 @@ object FileResource extends Controller {
         Redirect(controllers.files.routes.FileResource.list).flashing("error" -> s"id: '$id', rev: '$rev' could not be removed from the database.")
       }
     )
+  }
+
+  def asyncCreateOrUpdateFile(file: FilePart[TemporaryFile]) {
+    val fileName = file.filename
+    val futureFilesList = getAllFiles()
+    futureFilesList.map(filesList =>
+      createOrUpdateFile(file, filesList, fileName)
+    )
+  }
+
+  def createOrUpdateFile(file: FilePart[TemporaryFile], filesList: List[FileRep], fileName: String) {
+    var id: UUID = null
+    var filePath: String = null
+    var found = false
+    for (fileRep <- filesList) {
+      if (fileRep.name == fileName) {
+        id = fileRep._id
+        filePath = fileRep.path
+        found = true
+      }
+    }
+
+    if (found) {
+      val existingFile = new File(filePath)
+      if (existingFile.exists()) {
+        existingFile.delete()
+      }
+    }
+    else {
+      id = UUID.randomUUID
+      filePath = "files/" + id
+    }
+
+    val uploadedFile = new File(filePath)
+    uploadedFile.getParentFile().mkdirs()
+    file.ref.moveTo(uploadedFile)
+    insertIntoTable(id, fileName, filePath)
   }
 
   //******************************************
