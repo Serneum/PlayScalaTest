@@ -13,22 +13,59 @@ import settings.SystemSettings
 import scala.concurrent.{Await, Future}
 import play.api.mvc._
 import scratch._
-import java.io.File
+import java.io.{FileNotFoundException, File}
 import scala.util.{Success, Failure}
-import scala.concurrent.duration._
-import scala.concurrent._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object FileResource extends Controller {
 
   def list = Action.async { implicit request =>
-    val futureFilesList = getAllFiles()
-    futureFilesList.map(filesList => Ok(views.html.fileList(filesList)))
+    for {
+      filesList <- getAllFiles()
+    }
+    yield {
+      Ok(views.html.fileList(filesList))
+    }
   }
 
   def upload = Action(parse.multipartFormData) { request =>
     request.body.file("file").map { file =>
-      asyncCreateOrUpdateFile(file)
+      for {
+        filesList <- getAllFiles()
+      }
+      yield {
+        val fileName = file.filename
+        var id: UUID = null
+        var filePath: String = null
+        var found = false
+        var rev: String = null
+        for (fileRep <- filesList) {
+          if (fileRep.name == fileName) {
+            id = fileRep._id
+            filePath = fileRep.path
+            rev = fileRep._rev
+            found = true
+          }
+        }
+
+        // If the file already exists, delete it and replace it with the new version
+        if (found) {
+          val existingFile = new File(filePath)
+          if (existingFile.exists()) {
+            existingFile.delete()
+          }
+          updateFile(id, fileName, filePath, rev)
+        }
+        else {
+          id = UUID.randomUUID
+          filePath = "files/" + id
+          insertIntoTable(id, fileName, filePath)
+        }
+
+        val uploadedFile = new File(filePath)
+        uploadedFile.getParentFile().mkdirs()
+        file.ref.moveTo(uploadedFile)
+      }
       Redirect(controllers.files.routes.FileResource.list)
     }
     .getOrElse {
@@ -36,9 +73,13 @@ object FileResource extends Controller {
     }
   }
 
-  def deleteFile(id: UUID, rev: String) = Action.async(parse.anyContent) { request =>
-    val futureRemovedFromDb = removeFromTable(id, rev)
-    futureRemovedFromDb.map(removedFromDb =>
+  def deleteFile(id: UUID) = Action.async(parse.anyContent) { request =>
+    for {
+      doc <- getDocumentById(id)
+      rev = doc._rev
+      removedFromDb <- removeFromTable(id, rev)
+    }
+    yield {
       if (removedFromDb) {
         val filePath = "files/" + id
         val file = new File(filePath)
@@ -58,44 +99,25 @@ object FileResource extends Controller {
       else {
         Redirect(controllers.files.routes.FileResource.list).flashing("error" -> s"id: '$id', rev: '$rev' could not be removed from the database.")
       }
-    )
+    }
   }
 
-  def asyncCreateOrUpdateFile(file: FilePart[TemporaryFile]) {
-    val fileName = file.filename
-    val futureFilesList = getAllFiles()
-    futureFilesList.map(filesList =>
-      createOrUpdateFile(file, filesList, fileName)
-    )
-  }
-
-  def createOrUpdateFile(file: FilePart[TemporaryFile], filesList: List[FileRep], fileName: String) {
-    var id: UUID = null
-    var filePath: String = null
-    var found = false
-    for (fileRep <- filesList) {
-      if (fileRep.name == fileName) {
-        id = fileRep._id
-        filePath = fileRep.path
-        found = true
+  def downloadFile(path: String) = Action.async {
+    val file = new File(path)
+    for {
+      doc <- getDocumentById(UUID.fromString(file.getName))
+    }
+    yield {
+      if (file.exists()) {
+        Ok.sendFile(
+          content = file,
+          fileName = _ => doc.name
+        )
+      }
+      else {
+        NotFound
       }
     }
-
-    if (found) {
-      val existingFile = new File(filePath)
-      if (existingFile.exists()) {
-        existingFile.delete()
-      }
-    }
-    else {
-      id = UUID.randomUUID
-      filePath = "files/" + id
-    }
-
-    val uploadedFile = new File(filePath)
-    uploadedFile.getParentFile().mkdirs()
-    file.ref.moveTo(uploadedFile)
-    insertIntoTable(id, fileName, filePath)
   }
 
   //******************************************
@@ -115,6 +137,14 @@ object FileResource extends Controller {
     }
   }
 
+  def getDocumentById(id: UUID): Future[FileRep] = {
+    val filesDbUrl = SystemSettings.DB_URL + SystemSettings.FILES_DB + id
+    val holder: WSRequestHolder = WS.url(filesDbUrl)
+    holder.get().map { response =>
+      (response.json).as[FileRep]
+    }
+  }
+
   def insertIntoTable(id: UUID, name: String, path: String) {
     val filesDbUrl = SystemSettings.DB_URL + SystemSettings.FILES_DB + id
     val holder: WSRequestHolder = WS.url(filesDbUrl)
@@ -122,6 +152,18 @@ object FileResource extends Controller {
       "_id"   -> id,
       "name" -> name,
       "path" -> path
+    )
+    holder.put(json)
+  }
+
+  def updateFile(id: UUID, name: String, path: String, rev: String) {
+    val filesDbUrl = SystemSettings.DB_URL + SystemSettings.FILES_DB + id
+    val holder: WSRequestHolder = WS.url(filesDbUrl)
+    val json = Json.obj(
+      "_id"   -> id,
+      "name" -> name,
+      "path" -> path,
+      "_rev" -> rev
     )
     holder.put(json)
   }
