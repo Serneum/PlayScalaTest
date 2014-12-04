@@ -22,9 +22,9 @@
 
   @for(file <- files) {
     <tr>
-      <td><a href="@{controllers.files.routes.FileResource.downloadFile(file.path)}">@file.name</a></td>
+      <td><a href="@{controllers.files.routes.FileResource.download(file._id)}">@file.name</a></td>
       <td>@file.path</td>
-      <td><a href="@{controllers.files.routes.FileResource.deleteFile(file._id)}">delete</a></td>
+      <td><a href="@{controllers.files.routes.FileResource.delete(file._id)}">delete</a></td>
     </tr>
   }
 

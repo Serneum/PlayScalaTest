@@ -73,7 +73,7 @@ object FileResource extends Controller {
     }
   }
 
-  def deleteFile(id: UUID) = Action.async(parse.anyContent) { request =>
+  def delete(id: UUID) = Action.async(parse.anyContent) { request =>
     for {
       doc <- getDocumentById(id)
       rev = doc._rev
@@ -102,12 +102,12 @@ object FileResource extends Controller {
     }
   }
 
-  def downloadFile(path: String) = Action.async {
-    val file = new File(path)
+  def download(id: UUID) = Action.async {
     for {
-      doc <- getDocumentById(UUID.fromString(file.getName))
+      doc <- getDocumentById(id)
     }
     yield {
+      val file = new File(doc.path)
       if (file.exists()) {
         Ok.sendFile(
           content = file,

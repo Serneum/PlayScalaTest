@@ -1,4 +1,4 @@
 GET         /list                  controllers.files.FileResource.list
 POST        /upload                controllers.files.FileResource.upload()
-GET         /deleteFile/:id        controllers.files.FileResource.deleteFile(id: java.util.UUID)
-GET         /downloadFile/:path    controllers.files.FileResource.downloadFile(path: String)
+GET         /delete/:id            controllers.files.FileResource.delete(id: java.util.UUID)
+GET         /download/:id          controllers.files.FileResource.download(id: java.util.UUID)
