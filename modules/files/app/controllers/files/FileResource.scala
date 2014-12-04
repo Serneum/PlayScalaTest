@@ -73,12 +73,11 @@ object FileResource extends Controller {
     }
   }
 
-  def delete(id: String) = Action.async(parse.anyContent) { request =>
-    val uuid = UUID.fromString(id)
+  def delete(id: UUID) = Action.async(parse.anyContent) { request =>
     for {
-      doc <- getDocumentById(uuid)
+      doc <- getDocumentById(id)
       rev = doc._rev
-      removedFromDb <- removeFromTable(uuid, rev)
+      removedFromDb <- removeFromTable(id, rev)
     }
     yield {
       if (removedFromDb) {

@@ -10,7 +10,7 @@
   function deleteFile (docId) {
     var r = jsRoutes.controllers.files.FileResource.delete(docId);
     var xhr = new XMLHttpRequest();
-    xhr.open( r.type, r.url, true);
+    xhr.open(r.type, r.url, true);
     xhr.onload = function() {
       location.reload()
     }
