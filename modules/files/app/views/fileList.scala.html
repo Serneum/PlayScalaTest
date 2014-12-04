@@ -5,6 +5,18 @@
 @(files: List[FileRep])(implicit flash: Flash)
 
 <span style="color:red"><b>@flash.get("error")</b></span>
+<script type="text/javascript" src="@controllers.files.routes.FileResource.javascriptRoutes"></script>
+<script type="text/javascript">
+  function deleteFile (docId) {
+    var r = jsRoutes.controllers.files.FileResource.delete(docId);
+    var xhr = new XMLHttpRequest();
+    xhr.open( r.type, r.url, true);
+    xhr.onload = function() {
+      location.reload()
+    }
+    xhr.send();
+  }
+</script>
 @helper.form(action = controllers.files.routes.FileResource.upload, 'enctype -> "multipart/form-data") {
   <input type="file" name="file">
   <p>
@@ -24,7 +36,7 @@
     <tr>
       <td><a href="@{controllers.files.routes.FileResource.download(file._id)}">@file.name</a></td>
       <td>@file.path</td>
-      <td><a href="@{controllers.files.routes.FileResource.delete(file._id)}">delete</a></td>
+      <td><a href="javascript:deleteFile('@file._id')">delete</a></td>
     </tr>
   }
 

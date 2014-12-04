@@ -73,11 +73,12 @@ object FileResource extends Controller {
     }
   }
 
-  def delete(id: UUID) = Action.async(parse.anyContent) { request =>
+  def delete(id: String) = Action.async(parse.anyContent) { request =>
+    val uuid = UUID.fromString(id)
     for {
-      doc <- getDocumentById(id)
+      doc <- getDocumentById(uuid)
       rev = doc._rev
-      removedFromDb <- removeFromTable(id, rev)
+      removedFromDb <- removeFromTable(uuid, rev)
     }
     yield {
       if (removedFromDb) {
@@ -174,6 +175,17 @@ object FileResource extends Controller {
     holder.delete().map { response =>
       (response.json \ "ok").as[JsBoolean].value
     }
+  }
+
+  //******************************************
+  // Javascript Routes
+  //******************************************
+  def javascriptRoutes = Action { implicit request =>
+    Ok(
+      Routes.javascriptRouter("jsRoutes")(
+        controllers.files.routes.javascript.FileResource.delete
+      )
+    ).as("text/javascript")
   }
 
   // Can't seem to put this in the FileRep class file. Not sure why, but this isn't a terrible place either
